@@ -1,4 +1,5 @@
 ﻿@page "/provider/track/{ServiceId}"
+@rendermode InteractiveServer
 @inject IJSRuntime JS
 @inject IConfiguration Configuration
 @implements IAsyncDisposable
@@ -26,11 +27,10 @@
             {
                 await Task.Delay(250);
 
-                // Obtener la URL del API (hub) desde configuración
                 var apiBase = Configuration["Api:BaseUrl"] ?? "https://localhost:7245";
                 var hubUrl = $"{apiBase.TrimEnd('/')}/locationHub";
                 Console.WriteLine($"Iniciando rastreo GPS y conectando al Hub: {hubUrl}");
-                // Indicar visualmente en la UI que se está iniciando el rastreo
+
                 await JS.InvokeVoidAsync("showMapStatus", "Iniciando rastreo GPS...");
                 await JS.InvokeVoidAsync("iniciarRastreoGPS", ServiceId, hubUrl);
                 await JS.InvokeVoidAsync("showMapStatus", "Transmitiendo ubicación...");

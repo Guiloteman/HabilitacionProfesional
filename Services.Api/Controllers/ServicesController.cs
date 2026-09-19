@@ -104,4 +104,33 @@ public class ServicesController : ControllerBase
         var result = await _mediator.Send(new GetProvidersQuery(), cancellationToken);
         return Ok(result);
     }
+
+    [HttpPut("{id}/accept")]
+    [AllowAnonymous] // O mantenlo autorizado si prefieres validar de otra forma
+    public async Task<IActionResult> AcceptService(Guid id, [FromQuery] Guid providerId)
+    {
+        if (providerId == Guid.Empty)
+            return Unauthorized(new { message = "Prestador no identificado." });
+
+        var getQuery = new GetServiceByIdQuery(id);
+        var existingService = await _mediator.Send(getQuery);
+
+        if (existingService == null)
+            return NotFound(new { message = "El servicio no existe." });
+
+        var command = new UpdateServiceCommand(
+            Id: id,
+            Title: existingService.Title,
+            Description: existingService.Description,
+            Price: existingService.Price,
+            ProviderId: providerId
+        );
+
+        var result = await _mediator.Send(command);
+
+        if (!result)
+            return NotFound(new { message = "No se pudo asignar el servicio." });
+
+        return NoContent();
+    }
 }

@@ -1,4 +1,5 @@
 ﻿@page "/service-active/{ServiceId}"
+@rendermode InteractiveServer
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject IConfiguration Configuration
@@ -8,14 +9,15 @@
 <div class="container text-center py-5">
     <h3>Modo de ruta activo</h3>
     <p>Compartiendo ubicación en tiempo real...</p>
-    <div class="spinner-border text-success" role="status"></div>
+
+    <div id="map" class="map-theme-dark shadow border mt-3" style="height: 450px; width: 100%; border-radius: 12px;"></div>
+
+    <div class="spinner-border text-success mt-3" role="status"></div>
 </div>
 
 @code {
     [Parameter]
     public string ServiceId { get; set; } = string.Empty;
-
-    private HubConnection? hubConnection;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -23,20 +25,11 @@
         {
             try
             {
-                hubConnection = new HubConnectionBuilder()
-                    .WithUrl(Navigation.ToAbsoluteUri("/locationHub"))
-                    .Build();
-
-                await hubConnection.StartAsync();
-                await hubConnection.SendAsync("JoinServiceGroup", ServiceId);
-
-                // Invocar la función JS correcta para que el CLIENTE escuche la ubicación del prestador
-                // El Hub de SignalR está hospedado en la API (puerto 7245 en desarrollo)
-                // Obtener la URL del API (hub) desde configuración
+                await Task.Delay(200);
                 var apiBase = Configuration["Api:BaseUrl"] ?? Navigation.ToAbsoluteUri("/").ToString();
                 var hubUrl = $"{apiBase.TrimEnd('/')}/locationHub";
                 Console.WriteLine($"Conectando cliente al Hub en: {hubUrl}");
-                // Mostrar un pequeño indicador en la UI para indicar que estamos conectando
+
                 await JS.InvokeVoidAsync("showMapStatus", "Conectando al prestador...");
                 await JS.InvokeVoidAsync("iniciarEscuchaCliente", ServiceId, hubUrl);
                 await JS.InvokeVoidAsync("showMapStatus", "Conectado. Esperando ubicación...");
@@ -48,20 +41,8 @@
         }
     }
 
-    [JSInvokable]
-    public async Task SendCoordinates(double latitude, double longitude)
-    {
-        if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
-        {
-            await hubConnection.SendAsync("SendLocation", ServiceId, latitude, longitude);
-        }
-    }
-
     public async ValueTask DisposeAsync()
     {
-        if (hubConnection is not null)
-        {
-            await hubConnection.DisposeAsync();
-        }
+        await Task.CompletedTask;
     }
 }

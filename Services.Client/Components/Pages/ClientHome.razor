@@ -30,38 +30,49 @@
                         <button class="btn btn-outline-primary btn-sm" @onclick="CargarServiciosAsync">🔄 Reintentar</button>
                     </div>
                 }
-                else if (listaServicios == null || !listaServicios.Any())
-                {
-                    <div class="text-center py-5">
-                        <h4 class="text-muted">No hay servicios disponibles en este momento.</h4>
-                        <p class="text-muted small">Espera a que un prestador publique un servicio desde su panel.</p>
-                        <button class="btn btn-outline-primary btn-sm mt-2" @onclick="CargarServiciosAsync">🔄 Actualizar</button>
-                    </div>
-                }
                 else if (string.IsNullOrEmpty(serviceIdSelected))
                 {
                     <h4 class="mb-4 text-dark fw-bold text-center">Paso 1: Elige un Servicio Activo</h4>
-                    
-                    <div class="row g-3">
-                        @foreach (var servicio in listaServicios)
-                        {
-                            <div class="col-md-6">
-                                <div class="p-3 border rounded-3 shadow-sm h-100 d-flex flex-column justify-content-between bg-light">
-                                    <div>
-                                        <h5 class="fw-bold text-primary">@servicio.Title</h5>
-                                        <p class="text-muted small mb-2">@servicio.Description</p>
-                                        <div class="mb-2">
-                                            <span class="badge bg-success">Precio: $@servicio.Price</span>
-                                        </div>
-                                        <span class="text-muted font-monospace" style="font-size: 0.75rem;">ID: @servicio.Id</span>
-                                    </div>
-                                    <button class="btn btn-outline-primary w-100 fw-bold mt-3" @onclick="() => SeleccionarServicio(servicio.Id.ToString())">
-                                        Seleccionar y Rastrear ➔
-                                    </button>
-                                </div>
-                            </div>
-                        }
+
+                    <!-- 🔍 BARRA DE BÚSQUEDA INTERACTIVA -->
+                    <div class="mb-4">
+                        <input type="text" 
+                               class="form-control form-control-lg shadow-sm" 
+                               placeholder="🔍 Buscar servicio por título o descripción..." 
+                               @bind="searchTerm" 
+                               @bind:event="oninput" 
+                               @onkeyup="FiltrarServicios" />
                     </div>
+
+                    @if (listaServicios == null || !listaServicios.Any())
+                    {
+                        <div class="text-center py-4">
+                            <h5 class="text-muted">No se encontraron servicios que coincidan con la búsqueda.</h5>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var servicio in listaServicios)
+                            {
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-3 shadow-sm h-100 d-flex flex-column justify-content-between bg-light">
+                                        <div>
+                                            <h5 class="fw-bold text-primary">@servicio.Title</h5>
+                                            <p class="text-muted small mb-2">@servicio.Description</p>
+                                            <div class="mb-2">
+                                                <span class="badge bg-success">Precio: $@servicio.Price</span>
+                                            </div>
+                                            <span class="text-muted font-monospace" style="font-size: 0.75rem;">ID: @servicio.Id</span>
+                                        </div>
+                                        <button class="btn btn-outline-primary w-100 fw-bold mt-3" @onclick="() => SeleccionarServicio(servicio.Id.ToString())">
+                                            Seleccionar y Rastrear ➔
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
                 }
                 else
                 {
@@ -93,6 +104,7 @@
 @code {
     private bool cargando = true;
     private string? errorMessage;
+    private string searchTerm = string.Empty;
     private string serviceIdSelected = string.Empty;
     private List<ServiceDto> listaServicios = new();
 
@@ -109,8 +121,14 @@
         try
         {
             var client = ClientFactory.CreateClient("AuthApi");
-            // Realiza la petición GET al controlador de servicios que ya tienes implementado
-            var response = await client.GetFromJsonAsync<ServiceQueryResult>("api/services");
+            
+            string url = "api/services";
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                url += $"?searchTerm={Uri.EscapeDataString(searchTerm)}";
+            }
+
+            var response = await client.GetFromJsonAsync<ServiceQueryResult>(url);
             
             if (response != null && response.Items != null)
             {
@@ -118,8 +136,7 @@
             }
             else
             {
-                // Por si tu endpoint devuelve directamente una lista plana en lugar de un objeto paginado
-                listaServicios = await client.GetFromJsonAsync<List<ServiceDto>>("api/services") ?? new();
+                listaServicios = await client.GetFromJsonAsync<List<ServiceDto>>(url) ?? new();
             }
         }
         catch (Exception ex)
@@ -130,6 +147,11 @@
         {
             cargando = false;
         }
+    }
+
+    private async Task FiltrarServicios()
+    {
+        await CargarServiciosAsync();
     }
 
     private void SeleccionarServicio(string id)
@@ -150,7 +172,6 @@
         serviceIdSelected = string.Empty;
     }
 
-    // Clases DTO auxiliares para mapear la respuesta de la API
     public class ServiceDto
     {
         public Guid Id { get; set; }

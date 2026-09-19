@@ -1,20 +1,19 @@
 ﻿@page "/track/{ServiceId}"
+@rendermode InteractiveServer
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 @using Microsoft.AspNetCore.SignalR.Client
 @layout EmptyLayout
 
-
 <div class="container text-center py-4">
     <h3 class="fw-bold text-white">Siguiendo el trayecto</h3>
     <p class="text-white-50">El prestador va en camino hacia tu ubicación. Servicio ID: <strong class="text-white">@ServiceId</strong></p>
-    
+
     <div id="map" class="map-theme-dark shadow border mt-3" style="height: 450px; width: 100%; border-radius: 12px;"></div>
-    
+
     <p class="text-white mt-3">Estado actual: <span class="text-success fw-bold">En camino 🚗</span></p>
 </div>
-
 
 @code {
     [Parameter]
@@ -26,13 +25,15 @@
     {
         if (firstRender)
         {
-            // Da tiempo a que el DOM pinte el div#map para que Leaflet tome medidas correctas
             await Task.Delay(200);
+
+            // 1. Inicializar mapa base de inmediato en JS para que nunca quede en negro
+            await JS.InvokeVoidAsync("testInitMap", 40.4168, -3.7038);
 
             var hubUrl = "https://localhost:7245/locationHub";
 
             hubConnection = new HubConnectionBuilder()
-                .WithUrl(hubUrl)
+                .WithUrl(hubUrl, options => { options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets; })
                 .WithAutomaticReconnect()
                 .Build();
 
