@@ -1,0 +1,63 @@
+﻿@page "/track/{ServiceId}"
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+@layout EmptyLayout
+
+
+<div class="container text-center py-4">
+    <h3 class="fw-bold text-white">Siguiendo el trayecto</h3>
+    <p class="text-white-50">El prestador va en camino hacia tu ubicación. Servicio ID: <strong class="text-white">@ServiceId</strong></p>
+    
+    <div id="map" class="map-theme-dark shadow border mt-3" style="height: 450px; width: 100%; border-radius: 12px;"></div>
+    
+    <p class="text-white mt-3">Estado actual: <span class="text-success fw-bold">En camino 🚗</span></p>
+</div>
+
+
+@code {
+    [Parameter]
+    public string ServiceId { get; set; } = string.Empty;
+
+    private HubConnection? hubConnection;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Da tiempo a que el DOM pinte el div#map para que Leaflet tome medidas correctas
+            await Task.Delay(200);
+
+            var hubUrl = "https://localhost:7245/locationHub";
+
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On<double, double>("ReceiveLocation", async (lat, lon) =>
+            {
+                await JS.InvokeVoidAsync("updateMapMarker", lat, lon);
+            });
+
+            try
+            {
+                await hubConnection.StartAsync();
+                await hubConnection.SendAsync("JoinServiceGroup", ServiceId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al conectar con SignalR: {ex.Message}");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

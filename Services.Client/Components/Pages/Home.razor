@@ -1,0 +1,87 @@
+﻿@page "/home"
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Home</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <div class="p-5 mb-4 bg-light rounded-3 shadow-sm border">
+        <div class="container-fluid py-2">
+            <h1 class="display-5 fw-bold text-dark">¡Hola, @username!</h1>
+            <p class="col-md-8 fs-4 text-muted">Bienvenido a <strong>Servicios Ya!</strong>, tu plataforma para conectar con clientes y ofrecer tus oficios de forma rápida y segura.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="mb-3 text-success">
+                        <i class="bi bi-person-badge fs-2"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Destaca tus habilidades</h5>
+                    <p class="card-text text-muted">Mantén tu sección de "Servicios" actualizada con descripciones claras de lo que haces, fotos de tus trabajos previos y tarifas competitivas.</p>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="mb-3 text-primary">
+                        <i class="bi bi-clock-history fs-2"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Responde con agilidad</h5>
+                    <p class="card-text text-muted">Los clientes en Servicios Ya! valoran la rapidez. Atender las solicitudes a tiempo aumenta drásticamente tus oportunidades de contratación.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="mb-3 text-warning">
+                        <i class="bi bi-shield-check fs-2"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Construye confianza</h5>
+                    <p class="card-text text-muted">Ofrece un trato amable, cumple con los horarios acordados y fomenta que tus clientes califiquen positivamente tu labor.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string username = "Cargando...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+            var response = await client.GetFromJsonAsync<UserInfoModel>("api/auth/user-info");
+            
+            if (response != null && !string.IsNullOrEmpty(response.FullName))
+            {
+                username = response.FullName;
+            }
+            else
+            {
+                username = response?.Email ?? "Usuario";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener usuario: {ex.Message}");
+            username = "Usuario";
+        }
+    }
+
+    public class UserInfoModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,99 @@
+﻿@page "/services/create"
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3 class="text-center mb-4">Crear Nuevo Servicio</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @errorMessage
+    </div>
+}
+
+<EditForm Model="@command" OnValidSubmit="HandleSubmit" FormName="CreateServiceForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="title" class="form-label">Título del Oficio / Servicio</label>
+        <InputText id="title" class="form-control" placeholder="Ej: Reparación de instalaciones eléctricas" @bind-Value="command.Title" />
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Descripción detallada</label>
+        <InputTextArea id="description" class="form-control" rows="4" placeholder="Describe qué incluye tu trabajo, herramientas o zona de cobertura..." @bind-Value="command.Description" />
+    </div>
+
+    <div class="mb-3">
+        <label for="price" class="form-label">Honorarios / Precio Estimado ($)</label>
+        <InputNumber id="price" class="form-control" @bind-Value="command.Price" />
+        <div class="form-text">Puedes indicar un valor de referencia o tarifa por hora.</div>
+    </div>
+
+    <button type="submit" class="btn btn-success w-100 mb-2">Publicar Servicio y Enviar Ubicación 📍</button>
+    <button type="button" class="btn btn-secondary w-100" @onclick="NavigateBack">Cancelar</button>
+</EditForm>
+
+@code {
+    private CreateServiceDto command = new();
+    private string? errorMessage;
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            try
+            {
+                var coords = await JS.InvokeAsync<GeopositionResult>("obtenerCoordenadasActuales");
+                if (coords != null)
+                {
+                    command.Latitude = coords.Latitude;
+                    command.Longitude = coords.Longitude;
+                }
+            }
+            catch (Exception geoEx)
+            {
+                Console.WriteLine($"Aviso: No se pudo capturar la ubicación GPS: {geoEx.Message}");
+            }
+
+            var client = ClientFactory.CreateClient("AuthApi");
+            var response = await client.PostAsJsonAsync("api/services", command);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/services");
+            }
+            else
+            {
+                errorMessage = "Ocurrió un error al intentar crear el servicio en la API.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error de conexión: {ex.Message}";
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/services");
+    }
+
+    public class CreateServiceDto
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+    }
+
+    public class GeopositionResult
+    {
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+    }
+}

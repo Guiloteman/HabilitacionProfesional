@@ -1,0 +1,91 @@
+﻿@page "/provider/dashboard"
+@inject NavigationManager Navigation
+@inject IHttpClientFactory ClientFactory
+@using Services.Application.DTOs
+
+<div class="container py-4">
+    <h3 class="fw-bold text-dark mb-4">Servicios Disponibles para Tomar</h3>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm">
+            <strong>⚠️ Error:</strong> @errorMessage
+        </div>
+    }
+
+    @if (services == null && string.IsNullOrEmpty(errorMessage))
+    {
+        <p class="text-muted">Cargando servicios...</p>
+    }
+    else if (services != null && !services.Any())
+    {
+        <p class="text-muted">No hay servicios pendientes en este momento.</p>
+    }
+    else if (services != null)
+    {
+        <div class="list-group">
+            @foreach (var service in services)
+            {
+                <div class="list-group-item bg-light text-dark border mb-3 p-3 rounded shadow-sm">
+                    <h5>@service.Title</h5>
+                    <p class="mb-1 text-muted">@service.Description</p>
+                    <p class="text-success fw-bold">Precio estimado: $@service.Price</p>
+                    
+         <a href="@($"/provider/track/{service.Id}")" class="btn btn-success mt-2">
+            Aceptar y En Camino 🚗
+         </a>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ServiceItemDto>? services;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+            
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var pagedResult = await client.GetFromJsonAsync<PagedResult<ServiceItemDto>>("api/services", options);
+            
+            services = pagedResult?.Items ?? new List<ServiceItemDto>();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al invocar la API: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+
+    private void IniciarTrayecto(Guid serviceId)
+    {
+        try
+        {
+            string rutaDestino = $"/provider/track/{serviceId}";
+            Console.WriteLine($"Intentando navegar a: {rutaDestino}");
+            Navigation.NavigateTo(rutaDestino);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al intentar navegar: {ex.Message}");
+        }
+    }
+
+    public class PagedResult<T>
+    {
+        public List<T> Items { get; set; } = new();
+        public int PageNumber { get; set; }
+        public int PageSize { get; set; }
+        public int TotalCount { get; set; }
+        public int TotalPages { get; set; }
+    }
+}

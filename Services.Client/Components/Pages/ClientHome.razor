@@ -1,0 +1,166 @@
+﻿@page "/client-home"
+@layout EmptyLayout
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold text-white">¡Bienvenido a Servicios Ya!</h1>
+        <p class="text-white-50">Selecciona uno de los servicios publicados por los prestadores y realiza su seguimiento en tiempo real.</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-lg p-4 bg-white rounded-4 border-0">
+                
+                @if (cargando)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted mt-2">Cargando servicios disponibles desde la base de datos...</p>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @errorMessage
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-outline-primary btn-sm" @onclick="CargarServiciosAsync">🔄 Reintentar</button>
+                    </div>
+                }
+                else if (listaServicios == null || !listaServicios.Any())
+                {
+                    <div class="text-center py-5">
+                        <h4 class="text-muted">No hay servicios disponibles en este momento.</h4>
+                        <p class="text-muted small">Espera a que un prestador publique un servicio desde su panel.</p>
+                        <button class="btn btn-outline-primary btn-sm mt-2" @onclick="CargarServiciosAsync">🔄 Actualizar</button>
+                    </div>
+                }
+                else if (string.IsNullOrEmpty(serviceIdSelected))
+                {
+                    <h4 class="mb-4 text-dark fw-bold text-center">Paso 1: Elige un Servicio Activo</h4>
+                    
+                    <div class="row g-3">
+                        @foreach (var servicio in listaServicios)
+                        {
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 shadow-sm h-100 d-flex flex-column justify-content-between bg-light">
+                                    <div>
+                                        <h5 class="fw-bold text-primary">@servicio.Title</h5>
+                                        <p class="text-muted small mb-2">@servicio.Description</p>
+                                        <div class="mb-2">
+                                            <span class="badge bg-success">Precio: $@servicio.Price</span>
+                                        </div>
+                                        <span class="text-muted font-monospace" style="font-size: 0.75rem;">ID: @servicio.Id</span>
+                                    </div>
+                                    <button class="btn btn-outline-primary w-100 fw-bold mt-3" @onclick="() => SeleccionarServicio(servicio.Id.ToString())">
+                                        Seleccionar y Rastrear ➔
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center">
+                        <div class="alert alert-success py-3 mb-4 rounded-3 border-0 shadow-sm">
+                            <h5 class="fw-bold text-success mb-1">¡Servicio Seleccionado con Éxito! 🎉</h5>
+                            <p class="mb-0 text-muted small">ID del Servicio: <strong class="text-dark">@serviceIdSelected</strong></p>
+                        </div>
+
+                        <p class="text-muted small mb-4">El prestador está vinculado. Ya puedes abrir el mapa interactivo para ver su ubicación en tiempo real.</p>
+
+                        <button class="btn btn-success btn-lg w-100 py-3 shadow-sm fw-bold mb-3" @onclick="IrAlSeguimiento">
+                            🗺️ Ver Trayecto en Vivo (GPS)
+                        </button>
+                        
+                        <div>
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="CambiarServicio">
+                                ← Elegir otro servicio
+                            </button>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool cargando = true;
+    private string? errorMessage;
+    private string serviceIdSelected = string.Empty;
+    private List<ServiceDto> listaServicios = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarServiciosAsync();
+    }
+
+    private async Task CargarServiciosAsync()
+    {
+        cargando = true;
+        errorMessage = null;
+
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+            // Realiza la petición GET al controlador de servicios que ya tienes implementado
+            var response = await client.GetFromJsonAsync<ServiceQueryResult>("api/services");
+            
+            if (response != null && response.Items != null)
+            {
+                listaServicios = response.Items;
+            }
+            else
+            {
+                // Por si tu endpoint devuelve directamente una lista plana en lugar de un objeto paginado
+                listaServicios = await client.GetFromJsonAsync<List<ServiceDto>>("api/services") ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al conectar con la API para obtener los servicios: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void SeleccionarServicio(string id)
+    {
+        serviceIdSelected = id;
+    }
+
+    private void IrAlSeguimiento()
+    {
+        if (!string.IsNullOrWhiteSpace(serviceIdSelected))
+        {
+            Navigation.NavigateTo($"/track/{serviceIdSelected.Trim()}");
+        }
+    }
+
+    private void CambiarServicio()
+    {
+        serviceIdSelected = string.Empty;
+    }
+
+    // Clases DTO auxiliares para mapear la respuesta de la API
+    public class ServiceDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+    }
+
+    public class ServiceQueryResult
+    {
+        public List<ServiceDto> Items { get; set; } = new();
+    }
+}

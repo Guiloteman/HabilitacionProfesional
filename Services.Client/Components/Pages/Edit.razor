@@ -1,0 +1,155 @@
+﻿@page "/services/edit/{id:guid}"
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h3>Editar Servicio</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (command == null)
+{
+    <p><em>Cargando datos del servicio...</em></p>
+}
+else
+{
+    <EditForm Model="@command" OnValidSubmit="HandleSubmit" FormName="EditServiceForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label for="title" class="form-label">Título</label>
+            <InputText id="title" class="form-control" @bind-Value="command.Title" />
+        </div>
+
+        <div class="mb-3">
+            <label for="description" class="form-label">Descripción</label>
+            <InputTextArea id="description" class="form-control" @bind-Value="command.Description" />
+        </div>
+
+        <div class="mb-3">
+            <label for="price" class="form-label">Precio</label>
+            <InputNumber id="price" class="form-control" @bind-Value="command.Price" />
+        </div>
+
+        <div class="mb-3">
+            <label for="provider" class="form-label">Proveedor</label>
+            <InputSelect id="provider" class="form-control" @bind-Value="command.ProviderId">
+                <option value="@Guid.Empty">Seleccione un proveedor...</option>
+                @foreach (var provider in providers)
+                {
+                    <option value="@provider.Id">@provider.Name</option>
+                }
+            </InputSelect>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        <button type="button" class="btn btn-secondary ms-2" @onclick="NavigateBack">Cancelar</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private UpdateServiceCommand? command;
+    private IEnumerable<ProviderDto> providers = new List<ProviderDto>();
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+
+            providers = await client.GetFromJsonAsync<IEnumerable<ProviderDto>>("api/services/providers") 
+                        ?? Enumerable.Empty<ProviderDto>();
+
+            var service = await client.GetFromJsonAsync<ServiceItemDto>($"api/services/{Id}");
+            
+            if (service != null)
+            {
+                command = new UpdateServiceCommand(
+                    service.Id,
+                    service.Title,
+                    service.Description,
+                    service.Price,
+                    service.ProviderId
+                );
+            }
+            else
+            {
+                errorMessage = "No se encontró el servicio solicitado.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar los datos: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (command == null) return;
+
+            var client = ClientFactory.CreateClient("AuthApi");
+            var response = await client.PutAsJsonAsync($"api/services/{Id}", command);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/services");
+            }
+            else
+            {
+                errorMessage = "Ocurrió un error al intentar actualizar el servicio.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error de conexión: {ex.Message}";
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/services");
+    }
+
+    public class UpdateServiceCommand
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public Guid ProviderId { get; set; }
+
+        public UpdateServiceCommand(Guid id, string title, string description, decimal price, Guid providerId)
+        {
+            Id = id;
+            Title = title;
+            Description = description;
+            Price = price;
+            ProviderId = providerId;
+        }
+    }
+
+    public class ServiceItemDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public Guid ProviderId { get; set; }
+    }
+
+    public class ProviderDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,49 @@
+﻿@page "/provider/track/{ServiceId}"
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
+
+<div class="container text-center py-5">
+    <h3 class="fw-bold text-success">Transmitiendo tu Ubicación GPS 🛰️</h3>
+    <p class="text-muted">Servicio en curso: <strong>@ServiceId</strong></p>
+
+    <div class="alert alert-info shadow-sm mt-4">
+        Tu GPS está activo. El cliente ya puede ver tu posición en tiempo real en el mapa.
+    </div>
+
+    <div id="map" class="map-theme-dark rounded shadow-sm mt-3" style="height: 400px; width: 100%;"></div>
+</div>
+
+@code {
+    [Parameter]
+    public string ServiceId { get; set; } = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await Task.Delay(250);
+
+                // Obtener la URL del API (hub) desde configuración
+                var apiBase = Configuration["Api:BaseUrl"] ?? "https://localhost:7245";
+                var hubUrl = $"{apiBase.TrimEnd('/')}/locationHub";
+                Console.WriteLine($"Iniciando rastreo GPS y conectando al Hub: {hubUrl}");
+                // Indicar visualmente en la UI que se está iniciando el rastreo
+                await JS.InvokeVoidAsync("showMapStatus", "Iniciando rastreo GPS...");
+                await JS.InvokeVoidAsync("iniciarRastreoGPS", ServiceId, hubUrl);
+                await JS.InvokeVoidAsync("showMapStatus", "Transmitiendo ubicación...");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al invocar JavaScript: {ex.Message}");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Task.CompletedTask;
+    }
+}

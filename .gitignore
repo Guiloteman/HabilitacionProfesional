@@ -1,0 +1,42 @@
+# Ignore build outputs
+bin/
+obj/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# ASP.NET temp
+App_Data/
+
+# Node
+node_modules/
+
+# logs
+*.log
+
+# Visual Studio Code
+.vscode/
+
+# Publish
+publish/
+
+# nuget
+*.nupkg
+packages/
+
+# Misc
+*.DS_Store
+*.Thumbs.db
+
+# dotnet user secrets
+secrets.json
+
+# Visual Studio launch settings
+Properties/launchSettings.json

@@ -1,0 +1,16 @@
+﻿@inherits LayoutComponentBase
+
+<div class="container-fluid d-flex flex-column justify-content-center align-items-center min-vh-100 py-4" 
+     style="background: linear-gradient(180deg, rgba(5, 39, 103, 0.85) 0%, rgba(58, 6, 71, 0.85) 70%), url('/images/Code_Generated_Image.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+    
+    <!-- Imagen o Logotipo arriba de la tarjeta -->
+    <div class="mb-4 text-center">
+        <img src="images/Code_Generated_Image.png" alt="Servicios Ya!" style="max-height: 80px; object-fit: contain;" />
+    </div>
+
+    <!-- Tarjeta del formulario (limpia, sin la imagen adentro) -->
+    <div class="card shadow p-4" style="width: 100%; max-width: 400px; background-color: rgba(255, 255, 255, 0.95);">
+        @Body
+    </div>
+
+</div>

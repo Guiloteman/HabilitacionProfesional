@@ -1,0 +1,103 @@
+﻿@page "/services"
+@inject IHttpClientFactory ClientFactory
+@using Services.Client.Models
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Catálogo de Servicios</h3>
+    <a href="/services/create" class="btn btn-success">+ Nuevo Servicio</a>
+</div>
+
+@if (pagedResult == null)
+{
+    <p><em>Cargando servicios...</em></p>
+}
+else if (pagedResult.Items == null || !pagedResult.Items.Any())
+{
+    <p><em>No hay servicios registrados.</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Descripción</th>
+                <th>Precio</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var service in pagedResult.Items)
+            {
+                <tr>
+                    <td>@service.Title</td>
+                    <td>@service.Description</td>
+                    <td>$@service.Price</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <button class="btn btn-secondary @(currentPage == 1 ? "disabled" : "")" 
+                @onclick="PrevPage" 
+                disabled="@(currentPage == 1)">
+            Anterior
+        </button>
+
+        <span>Página @currentPage de @totalPages</span>
+
+        <button class="btn btn-secondary @(currentPage >= totalPages ? "disabled" : "")" 
+                @onclick="NextPage" 
+                disabled="@(currentPage >= totalPages)">
+            Siguiente
+        </button>
+    </div>
+}
+
+@code {
+    private PagedResult<ServiceItemDto>? pagedResult;
+    private int currentPage = 1;
+    private int pageSize = 5;
+    private int totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServices();
+    }
+
+    private async Task LoadServices()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+            pagedResult = await client.GetFromJsonAsync<PagedResult<ServiceItemDto>>($"api/services?pageNumber={currentPage}&pageSize={pageSize}");
+            
+            if (pagedResult != null)
+            {
+                totalPages = pagedResult.TotalPages > 0 ? pagedResult.TotalPages : 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar servicios: {ex.Message}");
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadServices();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadServices();
+        }
+    }
+}

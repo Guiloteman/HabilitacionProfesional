@@ -1,0 +1,67 @@
+﻿@page "/register"
+@layout AuthLayout
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<h3 class="text-center mb-4">Registro de Usuario</h3>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert alert-info">@message</div>
+}
+
+<EditForm Model="registerModel" OnValidSubmit="HandleRegister" FormName="registerForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Nombre Completo:</label>
+        <InputText class="form-control" @bind-Value="registerModel.FullName" />
+    </div>
+
+    <div class="mb-3">
+        <label>Correo Electrónico:</label>
+        <InputText class="form-control" @bind-Value="registerModel.Email" />
+    </div>
+
+    <div class="mb-3">
+        <label>Contraseña:</label>
+        <InputText type="password" class="form-control" @bind-Value="registerModel.Password" />
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 mb-3">Registrarse</button>
+
+    <div class="text-center">
+        <a href="/">¿Ya tienes una cuenta? Inicia sesión</a>
+    </div>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private RegisterDto registerModel { get; set; } = new();
+    
+    private string? message;
+
+    private async Task HandleRegister()
+    {
+            
+        var client = ClientFactory.CreateClient("AuthApi");
+        var response = await client.PostAsJsonAsync("api/auth/register", registerModel);
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/?registered=true");
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            message = $"Error: {errorContent}";
+        }
+    }
+
+    public class RegisterDto
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+    }
+}
