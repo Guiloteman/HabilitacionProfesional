@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <div class="container py-5">
     <div class="text-center mb-5">
@@ -34,7 +35,6 @@
                 {
                     <h4 class="mb-4 text-dark fw-bold text-center">Paso 1: Elige un Servicio Activo</h4>
 
-                    <!-- 🔍 BARRA DE BÚSQUEDA INTERACTIVA -->
                     <div class="mb-4">
                         <input type="text" 
                                class="form-control form-control-lg shadow-sm" 
@@ -82,10 +82,20 @@
                             <p class="mb-0 text-muted small">ID del Servicio: <strong class="text-dark">@serviceIdSelected</strong></p>
                         </div>
 
-                        <p class="text-muted small mb-4">El prestador está vinculado. Ya puedes abrir el mapa interactivo para ver su ubicación en tiempo real.</p>
+                        <p class="text-muted small mb-4">El prestador está vinculado. Presiona el botón para enviar tu ubicación actual y abrir el mapa interactivo.</p>
 
-                        <button class="btn btn-success btn-lg w-100 py-3 shadow-sm fw-bold mb-3" @onclick="IrAlSeguimiento">
-                            🗺️ Ver Trayecto en Vivo (GPS)
+                        <button class="btn btn-success btn-lg w-100 py-3 shadow-sm fw-bold mb-3" 
+                                @onclick="IrAlSeguimiento" 
+                                disabled="@obteniendoUbicacion">
+                            @if (obteniendoUbicacion)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Obteniendo GPS y conectando...</span>
+                            }
+                            else
+                            {
+                                <span>🗺️ Enviar Mi Ubicación y Ver Trayecto en Vivo (GPS)</span>
+                            }
                         </button>
                         
                         <div>
@@ -103,6 +113,7 @@
 
 @code {
     private bool cargando = true;
+    private bool obteniendoUbicacion = false;
     private string? errorMessage;
     private string searchTerm = string.Empty;
     private string serviceIdSelected = string.Empty;
@@ -159,29 +170,74 @@
         serviceIdSelected = id;
     }
 
-    private void IrAlSeguimiento()
+    private async Task IrAlSeguimiento()
     {
         if (!string.IsNullOrWhiteSpace(serviceIdSelected))
         {
-            Navigation.NavigateTo($"/track/{serviceIdSelected.Trim()}");
+            try
+            {
+                obteniendoUbicacion = true;
+                errorMessage = null;
+
+                var coords = await JS.InvokeAsync<CoordsDto>("obtenerCoordenadasActuales");
+
+                var client = ClientFactory.CreateClient("AuthApi");
+                
+                var payload = new 
+                {
+                    Latitude = coords.Latitude,
+                    Longitude = coords.Longitude
+                };
+
+                var response = await client.PostAsJsonAsync($"api/services/{serviceIdSelected}/request", payload);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Navigation.NavigateTo($"/track/{serviceIdSelected.Trim()}");
+                }
+                else
+                {
+                    errorMessage = "No se pudo registrar la ubicación en el servicio. Inténtalo de nuevo.";
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error al obtener la geolocalización o conectar con la API: {ex.Message}";
+            }
+            finally
+            {
+                obteniendoUbicacion = false;
+            }
         }
     }
 
     private void CambiarServicio()
     {
         serviceIdSelected = string.Empty;
+        errorMessage = null;
     }
 
     public class ServiceDto
-    {
-        public Guid Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public decimal Price { get; set; }
-    }
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public Guid ProviderId { get; set; }
+    public decimal Latitude { get; set; }
+    public decimal Longitude { get; set; }
+    public decimal? ProviderLatitude { get; set; }
+    public decimal? ProviderLongitude { get; set; }
+}
 
     public class ServiceQueryResult
     {
         public List<ServiceDto> Items { get; set; } = new();
+    }
+
+    public class CoordsDto
+    {
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
     }
 }

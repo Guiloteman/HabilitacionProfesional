@@ -6,6 +6,8 @@ using Services.Application.Services;
 using Services.Application.Services.Commands;
 using Services.Application.Services.Queries;
 using Services.Domain.Entities;
+using Services.Application.DTOs;
+
 
 namespace Services.Api.Controllers;
 
@@ -89,11 +91,28 @@ public class ServicesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
+        var userIdString = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var providerId))
+        {
+            return Unauthorized(new { message = "Usuario no autenticado." });
+        }
+
+        var getQuery = new GetServiceByIdQuery(id);
+        var existingService = await _mediator.Send(getQuery);
+
+        if (existingService == null)
+            return NotFound(new { message = "El servicio que intentas eliminar no existe." });
+
+        if (existingService.ProviderId != providerId)
+        {
+            return StatusCode(403, new { message = "No tienes permisos para eliminar este servicio porque no te pertenece." });
+        }
+
         var command = new DeleteServiceCommand(id);
         var result = await _mediator.Send(command);
 
         if (!result)
-            return NotFound(new { message = "El servicio que intentas eliminar no existe." });
+            return NotFound(new { message = "No se pudo eliminar el servicio." });
 
         return NoContent();
     }
@@ -106,11 +125,14 @@ public class ServicesController : ControllerBase
     }
 
     [HttpPut("{id}/accept")]
-    [AllowAnonymous] // O mantenlo autorizado si prefieres validar de otra forma
-    public async Task<IActionResult> AcceptService(Guid id, [FromQuery] Guid providerId)
+    [Authorize]
+    public async Task<IActionResult> AcceptService(Guid id)
     {
-        if (providerId == Guid.Empty)
+        var providerIdString = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(providerIdString) || !Guid.TryParse(providerIdString, out var providerId))
+        {
             return Unauthorized(new { message = "Prestador no identificado." });
+        }
 
         var getQuery = new GetServiceByIdQuery(id);
         var existingService = await _mediator.Send(getQuery);
@@ -130,6 +152,71 @@ public class ServicesController : ControllerBase
 
         if (!result)
             return NotFound(new { message = "No se pudo asignar el servicio." });
+
+        return NoContent();
+    }
+
+    [HttpGet("my-active-job")]
+    [Authorize]
+    public async Task<IActionResult> GetMyActiveJob()
+    {
+        var providerIdString = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(providerIdString) || !Guid.TryParse(providerIdString, out var providerId))
+        {
+            return Unauthorized(new { message = "Prestador no autenticado." });
+        }
+
+        var query = new GetActiveJobByProviderQuery(providerId);
+        var activeJob = await _mediator.Send(query);
+
+        if (activeJob == null)
+        {
+            return NoContent();
+        }
+
+        return Ok(activeJob);
+    }
+
+    [HttpGet("my-services")]
+    [Authorize]
+    public async Task<IActionResult> GetMyServices()
+    {
+        var userIdString = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var providerId))
+        {
+            return Unauthorized(new { message = "Prestador no autenticado." });
+        }
+
+        var query = new GetServicesQuery(SearchTerm: null, ProviderId: providerId, PageNumber: 1, PageSize: 50);
+        var result = await _mediator.Send(query);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/request")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RequestService(Guid id, [FromBody] ClientLocationDto dto)
+    {
+        var command = new UpdateClientLocationCommand(id, dto.Latitude, dto.Longitude);
+        var result = await _mediator.Send(command);
+
+        if (!result)
+        {
+            return NotFound(new { message = "El servicio solicitado no existe." });
+        }
+
+        return Ok(new { message = "Solicitud enviada con éxito al prestador." });
+    }
+
+    [HttpPut("{id}/provider-location")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateProviderLocation(Guid id, [FromBody] ProviderLocationDto dto)
+    {
+        var command = new UpdateProviderLocationCommand(id, dto.ProviderLatitude, dto.ProviderLongitude);
+        var result = await _mediator.Send(command);
+
+        if (!result)
+            return NotFound(new { message = "El servicio no existe o no se pudo actualizar la ubicación del prestador." });
 
         return NoContent();
     }

@@ -1,0 +1,144 @@
+﻿@page "/provider/my-services"
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark">Mis Servicios Publicados</h3>
+        <button class="btn btn-success fw-bold" @onclick="IrACrearServicio">
+            ➕ Crear Nuevo Servicio
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm">@errorMessage</div>
+    }
+
+    @if (cargando)
+    {
+        <p class="text-muted">Cargando tus servicios...</p>
+    }
+    else if (listaServicios == null || !listaServicios.Any())
+    {
+        <div class="alert alert-info" role="alert">
+            No tienes ningún servicio publicado todavía. ¡Crea uno nuevo para empezar!
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-hover align-middle bg-white mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Título</th>
+                        <th>Descripción</th>
+                        <th>Precio</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var servicio in listaServicios)
+                    {
+                        <tr>
+                            <td class="fw-bold text-primary">@servicio.Title</td>
+                            <td class="text-muted text-truncate" style="max-width: 300px;">@servicio.Description</td>
+                            <td class="fw-bold text-success">$@servicio.Price</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditarServicio(servicio.Id)">
+                                    ✏️ Modificar
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => EliminarServicio(servicio.Id)">
+                                    🗑️ Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private bool cargando = true;
+    private string? errorMessage;
+    private List<ServiceDto> listaServicios = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarMisServiciosAsync();
+    }
+
+    private async Task CargarMisServiciosAsync()
+    {
+        cargando = true;
+        errorMessage = null;
+
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+            var response = await client.GetFromJsonAsync<ServiceQueryResult>("api/services/my-services");
+
+            if (response != null && response.Items != null)
+            {
+                listaServicios = response.Items;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar tus servicios: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void IrACrearServicio()
+    {
+        Navigation.NavigateTo("/services/create");
+    }
+
+    private void EditarServicio(Guid id)
+    {
+        Navigation.NavigateTo($"/services/edit/{id}");
+    }
+
+    private async Task EliminarServicio(Guid id)
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+            var response = await client.DeleteAsync($"api/services/{id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Recargar la lista tras eliminar
+                await CargarMisServiciosAsync();
+            }
+            else
+            {
+                errorMessage = "No se pudo eliminar el servicio.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error de conexión: {ex.Message}";
+        }
+    }
+
+    public class ServiceDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+    }
+
+    public class ServiceQueryResult
+    {
+        public List<ServiceDto> Items { get; set; } = new();
+    }
+}

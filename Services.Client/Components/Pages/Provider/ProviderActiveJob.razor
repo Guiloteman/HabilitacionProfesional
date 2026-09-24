@@ -1,0 +1,104 @@
+﻿@page "/provider/active-job"
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="container-fluid mt-4">
+    <h3 class="fw-bold text-white mb-4">Panel del Prestador - Trabajo en Curso 🗺️</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-light" role="status"></div>
+            <p class="text-white-50 mt-2">Cargando mapa y ubicación del cliente...</p>
+        </div>
+    }
+    else if (activeJob == null)
+    {
+        <div class="alert alert-dark shadow-sm p-4 border border-secondary text-center">
+            <h4 class="text-white">No tienes ningún trabajo en curso en este momento.</h4>
+            <p class="text-white-50">Cuando aceptes una solicitud, podrás ver el mapa interactivo aquí.</p>
+            <button class="btn btn-primary mt-3" @onclick='() => Navigation.NavigateTo("/provider/dashboard")'>
+                Ir al Dashboard
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card shadow bg-dark text-white border-secondary p-3">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">Servicio: @activeJob.Title</h5>
+                        <p class="text-white-50">@activeJob.Description</p>
+                        <p><strong>Precio:</strong> <span class="text-success">$@activeJob.Price</span></p>
+
+                        <!-- Contenedor donde se renderizará el mapa -->
+                        <div id="map" style="height: 450px; width: 100%; border-radius: 8px;" class="my-3 border border-secondary"></div>
+
+                        <div class="alert alert-info text-dark fw-bold text-center mt-3">
+                            📍 Dirigiéndose a la ubicación del cliente en tiempo real.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private ServiceItemDto? activeJob;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTrabajoActivoAsync();
+    }
+
+    private async Task CargarTrabajoActivoAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var client = ClientFactory.CreateClient("AuthApi");
+            activeJob = await client.GetFromJsonAsync<ServiceItemDto>("api/services/my-active-job");
+        }
+        catch
+        {
+            activeJob = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (activeJob != null)
+        {
+            try
+            {
+                // Llama a tu función de JavaScript de Leaflet pasando la lat/lng del cliente y del prestador
+                await JS.InvokeVoidAsync("inicializarMapa", activeJob.Latitude, activeJob.Longitude, activeJob.ProviderLatitude ?? 0, activeJob.ProviderLongitude ?? 0);
+            }
+            catch
+            {
+                // Previene errores si el script JS aún se está cargando
+            }
+        }
+    }
+
+    public class ServiceItemDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
+        public decimal? ProviderLatitude { get; set; }
+        public decimal? ProviderLongitude { get; set; }
+    }
+}

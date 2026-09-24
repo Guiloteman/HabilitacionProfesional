@@ -14,7 +14,11 @@ public partial class ServiceItem
 
     public DateTime CreatedAt { get; set; }
 
-    // Propiedades nuevas para la geolocalización
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
+
+    public decimal? ProviderLatitude { get; set; }
+
+    public decimal? ProviderLongitude { get; set; }
 }

@@ -29,7 +29,7 @@ window.testInitMap = function (lat, lon) {
 
     limpiarMapaExistente();
 
-    // Crear instancia del mapa centrada en coordenadas iniciales
+    // Crear instancia del mapa centrada en coordenadas iniciales (San Miguel de Tucumán por defecto)
     window.appMapState.map = L.map('map').setView([lat, lon], 15);
 
     // Añadir capa de OpenStreetMap
@@ -72,8 +72,8 @@ window.updateMapMarker = function (lat, lon) {
 window.iniciarRastreoGPS = function (serviceId, hubUrl) {
     limpiarMapaExistente();
 
-    // Mapa inicial por defecto (ej. Madrid o cualquier punto base) hasta obtener GPS real
-    window.testInitMap(40.4168, -3.7038);
+    // Mapa inicial centrado en San Miguel de Tucumán hasta obtener GPS real
+    window.testInitMap(-26.8083, -65.2176);
 
     if (!navigator.geolocation) {
         alert("La geolocalización no es compatible con este navegador.");
@@ -111,7 +111,7 @@ window.iniciarRastreoGPS = function (serviceId, hubUrl) {
                     .catch(err => console.error("Error al enviar ubicación via SignalR:", err));
             },
             error => {
-                console.error("Error al obtener la posición GPS:", error);
+                console.warn("Aviso de GPS en rastreo: " + error.message);
             },
             { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
         );
@@ -126,8 +126,8 @@ window.iniciarRastreoGPS = function (serviceId, hubUrl) {
 window.iniciarEscuchaCliente = function (serviceId, hubUrl) {
     limpiarMapaExistente();
 
-    // Inicializar mapa en una ubicación neutral por defecto hasta recibir la primera señal
-    window.testInitMap(40.4168, -3.7038);
+    // Inicializar mapa en San Miguel de Tucumán por defecto hasta recibir la primera señal
+    window.testInitMap(-26.8083, -65.2176);
 
     const connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, { transport: signalR.HttpTransportType.WebSockets })
@@ -147,5 +147,31 @@ window.iniciarEscuchaCliente = function (serviceId, hubUrl) {
         connection.invoke("JoinServiceGroup", serviceId).catch(err => console.error(err));
     }).catch(err => {
         console.error("Error al conectar SignalR en el cliente:", err);
+    });
+};
+
+// ==========================================
+// FUNCIÓN CORREGIDA: Obtiene GPS o usa Tucumán de respaldo
+// ==========================================
+window.obtenerCoordenadasActuales = function () {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            console.warn("Geolocalización no soportada. Usando San Miguel de Tucumán por defecto.");
+            resolve({ latitude: -26.8083, longitude: -65.2176 });
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            position => resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            }),
+            error => {
+                console.warn("Aviso de GPS: " + error.message + ". Usando San Miguel de Tucumán como respaldo.");
+                // Ubicación por defecto de respaldo (San Miguel de Tucumán)
+                resolve({ latitude: -26.8083, longitude: -65.2176 });
+            },
+            { enableHighAccuracy: false, timeout: 7000, maximumAge: 0 }
+        );
     });
 };

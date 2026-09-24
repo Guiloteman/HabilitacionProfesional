@@ -147,3 +147,18 @@ h1:focus {
 }
 #map.map-theme-dark .map-conn-status { background: rgba(30,30,30,0.9); color: #fff; }
 #map.map-theme-dark .map-conn-dot { box-shadow: 0 0 6px rgba(0,0,0,0.4); }
+
+
+/* Alinea el icono y el texto horizontalmente y los centra verticalmente */
+.sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Espacio agradable entre el icono y la palabra */
+    padding-left: 1.5rem;
+}
+
+    /* Opcional: Asegura que el icono tenga un tamaño proporcional */
+    .sidebar .nav-link span {
+        font-size: 1.2rem;
+        line-height: 1;
+    }

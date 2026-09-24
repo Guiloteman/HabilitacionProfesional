@@ -40,7 +40,13 @@ public class GetServicesQueryHandler : IRequestHandler<GetServicesQuery, PagedRe
                 Id = s.Id,
                 Title = s.Title,
                 Description = s.Description,
-                Price = s.Price
+                Price = s.Price,
+                ProviderId = s.ProviderId,
+                CreatedAt = s.CreatedAt,
+                Latitude = s.Latitude ?? 0,
+                Longitude = s.Longitude ?? 0,
+                ProviderLatitude = s.ProviderLatitude ?? 0,
+                ProviderLongitude = s.ProviderLongitude ?? 0
             })
             .ToListAsync(cancellationToken);
 

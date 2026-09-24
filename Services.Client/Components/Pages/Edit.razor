@@ -3,53 +3,57 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<h3>Editar Servicio</h3>
+<div class="container py-4">
+    <h3 class="fw-bold text-dark mb-4">Editar Servicio</h3>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm">@errorMessage</div>
+    }
 
-@if (command == null)
-{
-    <p><em>Cargando datos del servicio...</em></p>
-}
-else
-{
-    <EditForm Model="@command" OnValidSubmit="HandleSubmit" FormName="EditServiceForm">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+    @if (command == null)
+    {
+        <p class="text-muted"><em>Cargando datos del servicio...</em></p>
+    }
+    else
+    {
+        <EditForm Model="@command" OnValidSubmit="HandleSubmit" FormName="EditServiceForm">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
 
-        <div class="mb-3">
-            <label for="title" class="form-label">Título</label>
-            <InputText id="title" class="form-control" @bind-Value="command.Title" />
-        </div>
+            <div class="mb-3">
+                <label for="title" class="form-label fw-bold">Título</label>
+                <InputText id="title" class="form-control" @bind-Value="command.Title" />
+            </div>
 
-        <div class="mb-3">
-            <label for="description" class="form-label">Descripción</label>
-            <InputTextArea id="description" class="form-control" @bind-Value="command.Description" />
-        </div>
+            <div class="mb-3">
+                <label for="description" class="form-label fw-bold">Descripción</label>
+                <InputTextArea id="description" class="form-control" @bind-Value="command.Description" />
+            </div>
 
-        <div class="mb-3">
-            <label for="price" class="form-label">Precio</label>
-            <InputNumber id="price" class="form-control" @bind-Value="command.Price" />
-        </div>
+            <div class="mb-3">
+                <label for="price" class="form-label fw-bold">Precio</label>
+                <InputNumber id="price" class="form-control" @bind-Value="command.Price" />
+            </div>
 
-        <div class="mb-3">
-            <label for="provider" class="form-label">Proveedor</label>
-            <InputSelect id="provider" class="form-control" @bind-Value="command.ProviderId">
-                <option value="@Guid.Empty">Seleccione un proveedor...</option>
-                @foreach (var provider in providers)
-                {
-                    <option value="@provider.Id">@provider.Name</option>
-                }
-            </InputSelect>
-        </div>
+            <div class="mb-3">
+                <label for="provider" class="form-label fw-bold">Proveedor</label>
+                <InputSelect id="provider" class="form-control" @bind-Value="command.ProviderId">
+                    <option value="@Guid.Empty">Seleccione un proveedor...</option>
+                    @foreach (var provider in providers)
+                    {
+                        <option value="@provider.Id">@provider.Name</option>
+                    }
+                </InputSelect>
+            </div>
 
-        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-        <button type="button" class="btn btn-secondary ms-2" @onclick="NavigateBack">Cancelar</button>
-    </EditForm>
-}
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary fw-bold px-4">Guardar Cambios</button>
+                <button type="button" class="btn btn-secondary ms-2 px-4" @onclick="NavigateBack">Cancelar</button>
+            </div>
+        </EditForm>
+    }
+</div>
 
 @code {
     [Parameter]
@@ -65,6 +69,7 @@ else
         {
             var client = ClientFactory.CreateClient("AuthApi");
 
+            // Cargar proveedores y el servicio asegurando el uso del cliente configurado con cookies
             providers = await client.GetFromJsonAsync<IEnumerable<ProviderDto>>("api/services/providers") 
                         ?? Enumerable.Empty<ProviderDto>();
 
@@ -102,7 +107,7 @@ else
             
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo("/services");
+                Navigation.NavigateTo("/provider/my-services");
             }
             else
             {
@@ -117,7 +122,7 @@ else
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/services");
+        Navigation.NavigateTo("/provider/my-services");
     }
 
     public class UpdateServiceCommand

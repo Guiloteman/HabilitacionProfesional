@@ -20,15 +20,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ServicesDbContext>()
 .AddDefaultTokenProviders();
 
-// 1. CONFIGURAR CORS PARA PERMITIR AL CLIENTE BLAZOR COMUNICARSE CON SIGNALR
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorClient", policy =>
     {
-        policy.WithOrigins("https://localhost:7094", "http://localhost:5006") // Puertos de tu proyecto Client
+        policy.WithOrigins("https://localhost:7094", "http://localhost:5006")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Obligatorio para las conexiones de SignalR
+              .AllowCredentials();
     });
 });
 
@@ -51,7 +50,6 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// 2. USAR CORS ANTES DE MAPEAR LOS ENDPOINTS Y HUBS
 app.UseCors("AllowBlazorClient");
 
 app.MapHub<LocationHub>("/locationHub");

@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // <-- 1. Nuevo using
-using Microsoft.AspNetCore.Identity;                     // <-- 2. Nuevo using
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore; 
+using Microsoft.AspNetCore.Identity;
 using Services.Domain.Entities;
 using Services.Application.Common.Interfaces;
 
 namespace Services.Infrastructure.Persistence.Scaffolded;
 
-// 3. Heredamos de IdentityDbContext (asumiendo que crearás una clase ApplicationUser)
 public partial class ServicesDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
     public ServicesDbContext()
@@ -33,7 +32,6 @@ public partial class ServicesDbContext : IdentityDbContext<ApplicationUser>, IAp
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // 4. ¡CRÍTICO! Siempre debes llamar a la clase base primero cuando usas IdentityDbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<ServiceItem>(entity =>
@@ -43,6 +41,11 @@ public partial class ServicesDbContext : IdentityDbContext<ApplicationUser>, IAp
             entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Title).HasMaxLength(150);
+            entity.Property(e => e.Latitude).HasColumnType("decimal(18, 6)");
+            entity.Property(e => e.Longitude).HasColumnType("decimal(18, 6)");
+            entity.Property(e => e.ProviderLatitude).HasColumnType("decimal(18, 6)");
+            entity.Property(e => e.ProviderLongitude).HasColumnType("decimal(18, 6)");
+
         });
 
         OnModelCreatingPartial(modelBuilder);

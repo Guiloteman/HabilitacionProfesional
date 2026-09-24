@@ -1,143 +1,139 @@
-﻿@page "/provider/dashboard"
-@rendermode InteractiveServer
-@inject NavigationManager Navigation
-@inject IHttpClientFactory ClientFactory
-@using Services.Application.DTOs
-@inject AuthenticationStateProvider AuthStateProvider
-@using Microsoft.AspNetCore.Components.Authorization
+﻿    @page "/provider/dashboard"
+    @rendermode InteractiveServer
+    @inject IHttpClientFactory ClientFactory
+    @inject NavigationManager Navigation
+    @inject IJSRuntime JS
 
-<div class="container py-4">
-    <h3 class="fw-bold text-dark mb-4">Servicios Disponibles para Tomar</h3>
+    <div class="container-fluid mt-4">
+        <h3 class="fw-bold text-white mb-4">Panel del Prestador - Trabajo Asignado 🗺️</h3>
 
-    <!-- 🔍 BARRA DE BÚSQUEDA INTERACTIVA -->
-    <div class="mb-4">
-        <input type="text"
-               class="form-control form-control-lg shadow-sm"
-               placeholder="🔍 Buscar servicio disponible por título o descripción..."
-               @bind="searchTerm"
-               @bind:event="oninput"
-               @onkeyup="FiltrarServicios" />
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-light" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="text-white-50 mt-2">Buscando solicitudes pendientes...</p>
+            </div>
+        }
+        else if (assignedJob == null)
+        {
+            <div class="alert alert-dark shadow-sm p-4 border border-secondary text-center">
+                <h4 class="text-white">No tienes ningún servicio asignado en este momento.</h4>
+                <p class="text-white-50">Permanece a la espera. Cuando un cliente solicite una asistencia, aparecerá reflejada aquí automáticamente.</p>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                <div class="col-md-6 mx-auto">
+                    <div class="card shadow bg-dark text-white border-secondary">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">¡Nueva Solicitud de Servicio!</h5>
+                            <hr class="border-secondary" />
+                            <p><strong>Título:</strong> @assignedJob.Title</p>
+                            <p><strong>Descripción:</strong> @assignedJob.Description</p>
+                            <p><strong>Precio Estimado:</strong> <span class="text-success fw-bold">$@assignedJob.Price</span></p>
+                        
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger py-2">@errorMessage</div>
+                            }
+
+                            <button class="btn btn-success w-100 mt-3 py-2 fw-bold" @onclick="AceptarServicio">
+                                Aceptar y En Camino 🚗
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger shadow-sm">
-            <strong>⚠️ Error:</strong> @errorMessage
-        </div>
-    }
-
-    @if (services == null && string.IsNullOrEmpty(errorMessage))
-    {
-        <p class="text-muted">Cargando servicios...</p>
-    }
-    else if (services != null && !services.Any())
-    {
-        <div class="alert alert-info" role="alert">
-            No hay servicios pendientes que coincidan con la búsqueda.
-        </div>
-    }
-    else if (services != null)
-    {
-        <div class="list-group">
-            @foreach (var service in services)
-            {
-                <div class="list-group-item bg-light text-dark border mb-3 p-3 rounded shadow-sm">
-                    <h5>@service.Title</h5>
-                    <p class="mb-1 text-muted">@service.Description</p>
-                    <p class="text-success fw-bold">Precio estimado: $@service.Price</p>
-
-                    <button class="btn btn-success mt-2" @onclick="() => AceptarServicio(service.Id)">
-                        Aceptar y En Camino 🚗
-                    </button>
-                </div>
-            }
-        </div>
-    }
-</div>
-
-@code {
-    private List<ServiceItemDto>? services;
-    private string searchTerm = string.Empty;
-    private string errorMessage = string.Empty;
+    @code {
+    private bool isLoading = true;
+    private ServiceItemDto? assignedJob;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarServiciosAsync();
+        await CargarServicioAsignadoAsync();
     }
 
-    private async Task CargarServiciosAsync()
+    private async Task CargarServicioAsignadoAsync()
     {
+        isLoading = true;
         try
         {
             var client = ClientFactory.CreateClient("AuthApi");
-
-            string url = "api/services";
-            if (!string.IsNullOrEmpty(searchTerm))
-            {
-                url += $"?searchTerm={Uri.EscapeDataString(searchTerm)}";
-            }
-
-            var options = new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            var pagedResult = await client.GetFromJsonAsync<PagedResult<ServiceItemDto>>(url, options);
-
-            services = pagedResult?.Items ?? new List<ServiceItemDto>();
+            assignedJob = await client.GetFromJsonAsync<ServiceItemDto>("api/services/my-active-job");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            errorMessage = $"Error al invocar la API: {ex.Message}";
-            Console.WriteLine(errorMessage);
+            assignedJob = null;
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    private async Task FiltrarServicios()
-    {
-        await CargarServiciosAsync();
-    }
+    private async Task AceptarServicio()
+{
+    if (assignedJob == null) return;
 
-    private async Task AceptarServicio(Guid serviceId)
+    errorMessage = null;
+    try
     {
-        try
+        var coords = await JS.InvokeAsync<CoordsDto>("obtenerCoordenadasActuales");
+
+        var client = ClientFactory.CreateClient("AuthApi");
+        
+        var payload = new 
         {
-            // Obtenemos el ID del prestador actual desde el estado de autenticación de Blazor
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var providerId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            ProviderLatitude = coords.Latitude,
+            ProviderLongitude = coords.Longitude
+        };
 
-            if (string.IsNullOrEmpty(providerId))
-            {
-                errorMessage = "No se pudo identificar al prestador logueado.";
-                return;
-            }
-
-            var client = ClientFactory.CreateClient("AuthApi");
-
-            // Enviamos el providerId por la URL
-            var response = await client.PutAsync($"api/services/{serviceId}/accept?providerId={providerId}", null);
-
-            if (response.IsSuccessStatusCode)
-            {
-                Navigation.NavigateTo($"/provider/track/{serviceId}");
-            }
-            else
-            {
-                errorMessage = "No se pudo aceptar el servicio. Inténtalo de nuevo.";
-            }
+        var response = await client.PutAsJsonAsync($"api/services/{assignedJob.Id}/accept", payload);
+        
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/provider/active-job");
         }
-        catch (Exception ex)
+        else
         {
-            errorMessage = $"Error de red: {ex.Message}";
+            var errorContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            errorMessage = errorContent?.Message ?? "No se pudo aceptar el servicio.";
         }
     }
-
-    public class PagedResult<T>
+    catch (Exception ex)
     {
-        public List<T> Items { get; set; } = new();
-        public int PageNumber { get; set; }
-        public int PageSize { get; set; }
-        public int TotalCount { get; set; }
-        public int TotalPages { get; set; }
+        errorMessage = $"Error al obtener GPS o de red: {ex.Message}";
+    }
+}
+
+public class CoordsDto
+{
+    public decimal Latitude { get; set; }
+    public decimal Longitude { get; set; }
+}
+
+    public class ServiceItemDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public Guid ProviderId { get; set; }
+    public decimal Latitude { get; set; }
+    public decimal Longitude { get; set; }
+    public decimal? ProviderLatitude { get; set; }
+    public decimal? ProviderLongitude { get; set; }
+}
+
+    public class ErrorResponse
+    {
+        public string Message { get; set; } = string.Empty;
     }
 }

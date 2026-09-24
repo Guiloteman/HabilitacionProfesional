@@ -7,13 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// 1. Necesario para leer las cookies de la petición actual
 builder.Services.AddHttpContextAccessor();
 
-// 2. Registrar el manejador que reenvía la cookie de identidad
 builder.Services.AddTransient<CookieHandler>();
 
-// 3. Configurar el HttpClient nombrado apuntando a la API
 builder.Services.AddHttpClient("AuthApi", client =>
 {
     client.BaseAddress = new Uri("https://localhost:7245/");

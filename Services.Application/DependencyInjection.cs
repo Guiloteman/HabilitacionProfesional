@@ -13,7 +13,6 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Forma moderna y nativa de registrar AutoMapper en versiones recientes:
         services.AddAutoMapper(cfg => {
             cfg.AddMaps(Assembly.GetExecutingAssembly());
         });

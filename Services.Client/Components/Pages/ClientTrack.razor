@@ -27,7 +27,6 @@
         {
             await Task.Delay(200);
 
-            // 1. Inicializar mapa base de inmediato en JS para que nunca quede en negro
             await JS.InvokeVoidAsync("testInitMap", 40.4168, -3.7038);
 
             var hubUrl = "https://localhost:7245/locationHub";

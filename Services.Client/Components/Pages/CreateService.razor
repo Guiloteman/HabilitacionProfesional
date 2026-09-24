@@ -64,7 +64,7 @@
             
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo("/services");
+                Navigation.NavigateTo("/provider/my-services");
             }
             else
             {
@@ -79,7 +79,7 @@
 
     private void NavigateBack()
     {
-        Navigation.NavigateTo("/services");
+        Navigation.NavigateTo("/provider/my-services");
     }
 
     public class CreateServiceDto

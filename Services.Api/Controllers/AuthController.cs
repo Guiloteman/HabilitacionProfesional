@@ -64,7 +64,6 @@ public class AuthController : ControllerBase
             return Unauthorized("Credenciales incorrectas o cuenta no confirmada.");
         }
 
-        // Valida la contraseña y comprueba si el usuario tiene confirmado el correo (RequireConfirmedAccount = true)
         var result = await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: false, lockoutOnFailure: false);
 
         if (result.Succeeded)
@@ -143,21 +142,17 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Logout()
     {
         await _signInManager.SignOutAsync();
-
-        // Redirige de vuelta a la página principal del frontend
         return Redirect("https://localhost:7094/");
     }
 
     [HttpGet("user-info")]
     public async Task<IActionResult> GetUserInfo()
     {
-        // Verifica si el usuario actual está autenticado por cookies
         if (User.Identity == null || !User.Identity.IsAuthenticated)
         {
             return Unauthorized();
         }
 
-        // Busca al usuario en la base de datos usando su ID o correo actual
         var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? User.Identity.Name;
         var user = await _userManager.FindByEmailAsync(email);
 
@@ -166,11 +161,10 @@ public class AuthController : ControllerBase
             return NotFound();
         }
 
-        // Devuelve los datos necesarios (incluyendo su Nombre Completo)
         return Ok(new
         {
             email = user.Email,
-            fullName = user.FullName // O la propiedad que almacene el nombre en tu ApplicationUser
+            fullName = user.FullName
         });
     }
 }

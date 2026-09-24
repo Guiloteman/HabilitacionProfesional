@@ -8,8 +8,8 @@ public class ServiceItemDto
     public decimal Price { get; set; }
     public Guid ProviderId { get; set; }
     public DateTime? CreatedAt { get; set; }
-
-    // Coordenadas de ubicación del cliente
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    public decimal Latitude { get; set; }
+    public decimal Longitude { get; set; }
+    public decimal? ProviderLatitude { get; set; }
+    public decimal? ProviderLongitude { get; set; }
 }
